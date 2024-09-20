@@ -12,7 +12,7 @@ marketingDT_Original <- read.csv("Marketing_Target_train.csv", sep = ";")
 # unique(marketingDT['job'])
 
 # Preparing the same columns that exist on both datasets
-same_columns <- intersect(names(bankingDT), names(marketingDT))
+same_columns <- intersect(names(bankingDT_Original), names(marketingDT_Original))
 
 # Present information regarding that dataset
 str(bankingDT_Original[same_columns])
