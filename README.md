@@ -49,3 +49,7 @@ outcome of the previous marketing campaign ('failure','nonexistent','success')
 
 y
 has the client subscribed a term deposit? ('yes','no')
+
+Dataset: 
+https://www.kaggle.com/datasets/rashmiranu/banking-dataset-classification?select=new_train.csv
+https://www.kaggle.com/datasets/prakharrathi25/banking-dataset-marketing-targets?resource=download&select=test.csv
