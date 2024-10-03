@@ -101,13 +101,12 @@ library(superml)
 
 unique(dataset$job)
 encoded.job <- as.data.frame(model.matrix(~job-1, data=dataset))
-test.dataset <- dataset
 for (i in colnames(encoded.job)){
-  test.dataset <- cbind(test.dataset, i = encoded.job %>% select(i))
+  dataset <- cbind(dataset, i = encoded.job %>% select(i))
 }
 print(length(dataset$job))
-print(length(test.dataset$job))
-print(length(test.dataset$jobhousemaid))
+print(length(dataset$job))
+print(length(dataset$jobhousemaid))
 colnames(encoded.job)
 
 unique(dataset$marital)
