@@ -86,30 +86,45 @@ length(dataset$age)
 library(data.table)
 library(superml)
 
-# dataset.categorical.columns <- c("job", "marital", "education", "default", "housing", "contact", "month", "poutcome")
+dataset.categorical.columns <- c("job", "marital", "education", "default", "housing")
+column.to.drop <- c("poutcome", "contact", "month")
 
-# length(dataset$age)
-# #Remove unknowns from categorical data
-# for(i in dataset.categorical.columns){
-#   dataset <- subset(dataset, !dataset %>% select(i)=="unknown")
+# dataset <- subset(dataset, select = -poutcome)
+dataset <- subset(dataset, select = -poutcome)
+dataset <- subset(dataset, select = -contact)
+dataset <- subset(dataset, select = -month)
+dataset <- subset(dataset, select = -y)
+dataset <- subset(dataset, select = -campaign)
+dataset <- subset(dataset, select = -pdays)
+dataset <- subset(dataset, select = -previous)
+# for(i in column.to.drop){
+#   dataset <- subset(dataset, select = -(c(i)))
 # }
 
-# #Check if all the unknowns are gone
-# for(i in dataset.categorical.columns){
-#   print(unique(dataset %>% select(i)))
-# }
+#Remove unknowns from categorical data
+for(i in dataset.categorical.columns){
+  dataset <- subset(dataset, !dataset %>% select(i)=="unknown")
+}
 
+print(length(dataset$age))
+
+#OHE for the job column
 unique(dataset$job)
 encoded.job <- as.data.frame(model.matrix(~job-1, data=dataset))
 for (i in colnames(encoded.job)){
   dataset <- cbind(dataset, i = encoded.job %>% select(i))
 }
+dataset <- subset(dataset, select = -job)
 print(length(dataset$job))
-print(length(dataset$job))
-print(length(dataset$jobhousemaid))
 colnames(encoded.job)
 
 unique(dataset$marital)
+encoded.job <- as.data.frame(model.matrix(~marital-1, data=dataset))
+for (i in colnames(encoded.job)){
+  dataset <- cbind(dataset, i = encoded.job %>% select(i))
+}
+dataset <- subset(dataset, select = -marital)
+print(length(dataset$job))
 
 
 #Label encoding for the "education" column
@@ -118,18 +133,64 @@ education.classes <- c("primary", "secondary", "tertiary", "unknown")
 encoder = LabelEncoder$new()
 encoder$fit(education.classes)
 dataset$education <- encoder$fit_transform(dataset$education)
+dataset$education <- dataset$education + 1
 unique(dataset$education)
 
+#Label encoding for "default" column
+encoder = LabelEncoder$new()
+encoder$fit(dataset$default)
+dataset$default <- encoder$fit_transform(dataset$default)
+unique(dataset$default)
 
+#Label encoding for "housing" column
+encoder = LabelEncoder$new()
+encoder$fit(dataset$housing)
+dataset$housing <- encoder$fit_transform(dataset$housing)
+unique(dataset$housing)
 
-#Centers = k
-#kmeans(dataset, centers, algorithm=c("Lloyd"))
+#Label encoding for "loan" column
+encoder = LabelEncoder$new()
+encoder$fit(dataset$loan)
+dataset$loan <- encoder$fit_transform(dataset$loan)
+unique(dataset$loan)
+
+# install.packages("Rtsne")
+set.seed(4920)
+wcss <- vector()
+for (i in 1:15) {
+  kmeans_temp <- kmeans(dataset, centers = i, nstart = 25)
+  wcss[i] <- kmeans_temp$tot.withinss
+}
+
+# Plot WCSS to find the elbow point
+plot(1:15, wcss, type = "b", pch = 19, frame = FALSE, xlab = "Number of Clusters", ylab = "Total Within-Cluster Sum of Squares")
+
+kmeans_result <- kmeans(dataset, centers = 4, nstart=25)
+
+library(Rtsne)
+dataset <- dataset[!duplicated(dataset),]
+print(length(dataset$age))
+tsne_result <- Rtsne(dataset, dims = 2, perplexity = 30)
+tsne_data <- as.data.frame(tsne_result$Y)
+colnames(tsne_data) <- c("Dim1", "Dim2")
+tsne_data$Cluster <- as.factor(kmeans_result$cluster)
+
+#install.packages("ggplot2")
+library(ggplot2)
+ggplot(tsne_data, aes(x = Dim1, y = Dim2, color = Cluster)) +geom_point(size = 3) +labs(title = "K-means Clustering (t-SNE)", x = "Dimension 1", y = "Dimension 2") +theme_minimal()
+dataset.with.clusters <- dataset
+dataset.with.clusters$clusters <- as.factor(kmeans_result$cluster)
+# ggplot(dataset.with.clusters, aes(x = Petal.Length, y = Petal.Width, color = Cluster)) +
+#   geom_point(size = 3) +
+#   labs(title = "K-means Clustering on Iris Data")
 
 #Install this package for DBSCAN clustering, just uncomment
 #install.packages("fpc")
+write.csv(dataset, file = "cleaned_dataset.csv",sep = ";", row.names = FALSE)
+library(fpc)
 
-# library(fpc)
-
+# install.packages("dbscan")
+# library(dbscan)
 # DBSCAN <- dbscan(dataset, eps=0.45, MinPts = 5)
 
 #Install this package for GMM (Gaussian Mixture Model) clustering, just uncomment
