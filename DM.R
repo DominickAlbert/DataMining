@@ -78,7 +78,30 @@ View(duplicates)
 sum(duplicates)
 length(dataset$age)
 dataset <- dataset[!duplicated(dataset), ]
+
+# Define the categorical columns where "unknown" values may exist
+categorical_columns <- c("job", "marital", "education", "default", "housing", "contact")
+
+#cek kolom mana yang banyak unknown -> noucome bnyk bgt?
+for (col in categorical_columns) {
+  print(paste("Column:", col))
+  print(table(dataset[[col]]))
+}
+
+# Loop through each categorical column and remove rows with "unknown" values
+for (col in categorical_columns) {
+  dataset <- dataset[dataset[[col]] != "unknown", ]
+}
+
+# Check if "unknown" values have been successfully removed
+for (col in categorical_columns) {
+  print(unique(dataset[[col]]))
+}
+
+
 length(dataset$age)
+
+
 
 # These packages are for label encoding, install if need
 # install.packages("superml")
@@ -99,6 +122,12 @@ dataset <- subset(dataset, select = -pdays)
 dataset <- subset(dataset, select = -previous)
 # for(i in column.to.drop){
 #   dataset <- subset(dataset, select = -(c(i)))
+# dataset.categorical.columns <- c("job", "marital", "education", "default", "housing", "contact", "month", "poutcome")
+
+length(dataset$age)
+#Remove unknowns from categorical data
+# for(i in dataset.categorical.columns){
+#   dataset <- subset(dataset, !dataset %>% select(i)=="unknown")
 # }
 
 #Remove unknowns from categorical data
