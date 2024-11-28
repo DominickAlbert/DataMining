@@ -5,38 +5,8 @@ marketingDT_Original <- read.csv("Marketing_Target_train.csv", sep = ";")
 bankingDT_Processed <- bankingDT_Original
 marketingDT_Processed <- marketingDT_Original
 
-# rm()
-
 # Preparing the same columns that exist on both datasets
 same_columns <- intersect(names(bankingDT_Original), names(marketingDT_Original))
-
-# Present information regarding that dataset
-# head(bankingDT_Original)
-# head(marketingDT_Original)
-
-# unique(bankingDT_Original$job)
-# unique(marketingDT_Original$job)
-
-str(bankingDT_Original[same_columns])
-str(marketingDT_Original[same_columns])
-
-unique(bankingDT_Original['education'])
-unique(marketingDT_Original['education'])
-
-# unique(bankingDT_Original['marital'])
-# unique(marketingDT_Original['marital'])
-
-# unique(bankingDT_Original['month'])
-# unique(marketingDT_Original['month'])
-
-# unique(bankingDT_Original['poutcome'])
-# unique(marketingDT_Original['poutcome'])
-
-# unique(bankingDT_Original['pdays'])
-# unique(marketingDT_Original['pdays'])
-
-# unique(bankingDT_Original['previous'])
-# unique(marketingDT_Original['previous'])
 
 #--------------- PREPARATION BEFORE INTEGRATION -----------------------
 
@@ -70,23 +40,39 @@ bankingDT_Processed <- bankingDT_Processed %>%
 bankingDT_Processed <- bankingDT_Processed[, same_columns] 
 marketingDT_Processed <- marketingDT_Processed[, same_columns] 
 
+# Combining the 2 datasets into a single dataset
 dataset <- rbind(bankingDT_Processed,marketingDT_Processed)
 
-duplicates <- duplicated(dataset)
-duplicates <- duplicates[duplicates == TRUE]
-View(duplicates)
-sum(duplicates)
+# Remove features that isn't used
+dataset <- subset(dataset, select = -poutcome)
+dataset <- subset(dataset, select = -contact)
+dataset <- subset(dataset, select = -month)
+dataset <- subset(dataset, select = -pdays)
+dataset <- subset(dataset, select = -previous)
+dataset <- subset(dataset, select = -marital)
+dataset <- subset(dataset, select = -education)
+dataset <- subset(dataset, select = -default) 
+
+# Check length should be 78161
 length(dataset$age)
+
+# Remove duplicated values
 dataset <- dataset[!duplicated(dataset), ]
 
-# Define the categorical columns where "unknown" values may exist
-categorical_columns <- c("job", "marital", "education", "default", "housing", "contact")
+# Check length should be 75571
+length(dataset$age)
 
-#cek kolom mana yang banyak unknown -> noucome bnyk bgt?
-for (col in categorical_columns) {
-  print(paste("Column:", col))
-  print(table(dataset[[col]]))
-}
+# Check the remaining column ("age" "job" "housing" "loan" "duration" "campaign" "y")
+names(dataset)
+
+# Define the categorical columns where "unknown" values may exist
+categorical_columns <- c("job", "housing", "y")
+
+# Check the column that has alot of uknowns
+# for (col in categorical_columns) {
+#   print(paste("Column:", col))
+#   print(table(dataset[[col]]))
+# }
 
 # Loop through each categorical column and remove rows with "unknown" values
 for (col in categorical_columns) {
@@ -98,10 +84,8 @@ for (col in categorical_columns) {
   print(unique(dataset[[col]]))
 }
 
-
+# Check length should be 74228
 length(dataset$age)
-
-
 
 # These packages are for label encoding, install if need
 # install.packages("superml")
@@ -109,69 +93,28 @@ length(dataset$age)
 library(data.table)
 library(superml)
 
-dataset.categorical.columns <- c("job", "marital", "education", "default", "housing")
-column.to.drop <- c("poutcome", "contact", "month")
+# --------------ENCODING CATEGORICAL DATA----------------------
 
-# dataset <- subset(dataset, select = -poutcome)
-dataset <- subset(dataset, select = -poutcome)
-dataset <- subset(dataset, select = -contact)
-dataset <- subset(dataset, select = -month)
-dataset <- subset(dataset, select = -y)
-dataset <- subset(dataset, select = -campaign)
-dataset <- subset(dataset, select = -pdays)
-dataset <- subset(dataset, select = -previous)
-# for(i in column.to.drop){
-#   dataset <- subset(dataset, select = -(c(i)))
-# dataset.categorical.columns <- c("job", "marital", "education", "default", "housing", "contact", "month", "poutcome")
+# Changing y to 1 or 0 from "yes" and "no"
+dataset$y <- ifelse(dataset$y == "yes", 1, 0)
 
-length(dataset$age)
-#Remove unknowns from categorical data
-# for(i in dataset.categorical.columns){
-#   dataset <- subset(dataset, !dataset %>% select(i)=="unknown")
-# }
+#Target Encoding for the job column
+# Calculate the mean of the target variable 'y' for each job category
+job_target_means <- dataset %>% group_by(job) %>% summarize(job_mean_target = mean(y, na.rm = TRUE))
 
-#Remove unknowns from categorical data
-for(i in dataset.categorical.columns){
-  dataset <- subset(dataset, !dataset %>% select(i)=="unknown")
-}
+# Merge the target means back into the original dataset
+dataset <- dataset %>% left_join(job_target_means, by = "job")
 
-print(length(dataset$age))
+# (Optional) Replace the original 'job' column with the encoded values
+dataset$job <- dataset$job_mean_target
 
-#OHE for the job column
+#Remove the job_mean_target because it is replaced by job
+dataset <- subset(dataset, select = -job_mean_target)
+
+# Make sure the target encoding works well
 unique(dataset$job)
-encoded.job <- as.data.frame(model.matrix(~job-1, data=dataset))
-for (i in colnames(encoded.job)){
-  dataset <- cbind(dataset, i = encoded.job %>% select(i))
-}
-dataset <- subset(dataset, select = -job)
-print(length(dataset$job))
-colnames(encoded.job)
 
-unique(dataset$marital)
-encoded.job <- as.data.frame(model.matrix(~marital-1, data=dataset))
-for (i in colnames(encoded.job)){
-  dataset <- cbind(dataset, i = encoded.job %>% select(i))
-}
-dataset <- subset(dataset, select = -marital)
-print(length(dataset$job))
-
-
-#Label encoding for the "education" column
-unique(dataset$education)
-education.classes <- c("primary", "secondary", "tertiary", "unknown")
-encoder = LabelEncoder$new()
-encoder$fit(education.classes)
-dataset$education <- encoder$fit_transform(dataset$education)
-dataset$education <- dataset$education + 1
-unique(dataset$education)
-
-#Label encoding for "default" column
-encoder = LabelEncoder$new()
-encoder$fit(dataset$default)
-dataset$default <- encoder$fit_transform(dataset$default)
-unique(dataset$default)
-
-#Label encoding for "housing" column
+# Label encoding for "housing" column
 encoder = LabelEncoder$new()
 encoder$fit(dataset$housing)
 dataset$housing <- encoder$fit_transform(dataset$housing)
@@ -182,6 +125,23 @@ encoder = LabelEncoder$new()
 encoder$fit(dataset$loan)
 dataset$loan <- encoder$fit_transform(dataset$loan)
 unique(dataset$loan)
+
+names(dataset)
+
+# Check length should be 74228
+length(dataset$age)
+
+# Min Max scaler for the numerical value
+for (col in c("duration", "campaign", "age")) {
+  dataset[[col]] <- (dataset[[col]] - min(dataset[[col]])) / (max(dataset[[col]]) - min(dataset[[col]]))
+}
+
+# Removing y as we dont need it anymore
+dataset <- subset(dataset, select = -y)
+
+write.csv(dataset, file = "Combine.csv", row.names = FALSE)
+
+# -----------------------------Kebawah belum diganti--------------------------------
 
 # install.packages("Rtsne")
 set.seed(4920)
@@ -199,12 +159,12 @@ kmeans_result <- kmeans(dataset, centers = 4, nstart=25)
 library(Rtsne)
 dataset <- dataset[!duplicated(dataset),]
 print(length(dataset$age))
-tsne_result <- Rtsne(dataset, dims = 2, perplexity = 30)
+tsne_result <-  (dataset, dims = 2, perplexity = 30)
 tsne_data <- as.data.frame(tsne_result$Y)
 colnames(tsne_data) <- c("Dim1", "Dim2")
 tsne_data$Cluster <- as.factor(kmeans_result$cluster)
 
-#install.packages("ggplot2")
+# install.packages("ggplot2")
 library(ggplot2)
 ggplot(tsne_data, aes(x = Dim1, y = Dim2, color = Cluster)) +geom_point(size = 3) +labs(title = "K-means Clustering (t-SNE)", x = "Dimension 1", y = "Dimension 2") +theme_minimal()
 dataset.with.clusters <- dataset
