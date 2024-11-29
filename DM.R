@@ -139,14 +139,22 @@ for (col in c("duration", "campaign", "age")) {
 # Removing y as we dont need it anymore
 dataset <- subset(dataset, select = -y)
 
+dataset <- dataset[!duplicated(dataset),]
+
+# Should be 73945
+length(dataset$age)
+
 write.csv(dataset, file = "Combine.csv", row.names = FALSE)
 
 # -----------------------------Kebawah belum diganti--------------------------------
 
-# install.packages("Rtsne")
+# Reading the Combine CSV for better consistency
+dataset = read.csv("Combine.csv")
+
+# Elbow method
 set.seed(4920)
 wcss <- vector()
-for (i in 1:15) {
+for (i in 1:10) {
   kmeans_temp <- kmeans(dataset, centers = i, nstart = 25)
   wcss[i] <- kmeans_temp$tot.withinss
 }
@@ -154,12 +162,49 @@ for (i in 1:15) {
 # Plot WCSS to find the elbow point
 plot(1:15, wcss, type = "b", pch = 19, frame = FALSE, xlab = "Number of Clusters", ylab = "Total Within-Cluster Sum of Squares")
 
+# Cluster the data using kMeans
 kmeans_result <- kmeans(dataset, centers = 4, nstart=25)
 
+# Assign the cluster to the appropriate row
+dataset <- cbind(dataset, kmeans_result$cluster)
+head(dataset,50)
+
+#PCA
+pca_result <- prcomp(dataset, center = TRUE, scale. = TRUE)
+
+# Add PCA scores to the original dataset
+dataset_with_pca <- cbind(cluster = kmeans_result$cluster, pca_result$x)
+dataset_with_pca <- as.data.frame(dataset_with_pca)
+
+names(dataset_with_pca)
+
+dataset_with_pca = subset(dataset_with_pca, select = -PC4)
+dataset_with_pca = subset(dataset_with_pca, select = -PC5)
+dataset_with_pca = subset(dataset_with_pca, select = -PC6)
+
+print(head(dataset_with_pca,10))
+
+table(dataset_with_pca$cluster)
+
+install.packages("plotly")
+
+# Load the plotly library
+library(plotly)
+
+# 3D Scatter plot
+ p <- plot_ly(dataset_with_pca, x = ~PC1, y = ~PC2, z = ~PC3, color = ~as.factor(cluster), colors = "Set1") %>%
+  add_markers() %>%
+  layout(scene = list(
+    xaxis = list(title = 'PC1'),
+    yaxis = list(title = 'PC2'),
+    zaxis = list(title = 'PC3')),
+    title = "3D PCA Plot by Cluster"
+  )
+
+htmlwidgets::saveWidget(p, "3d_pca_plot.html")
+
 library(Rtsne)
-dataset <- dataset[!duplicated(dataset),]
-print(length(dataset$age))
-tsne_result <-  (dataset, dims = 2, perplexity = 30)
+tsne_result <- Rtsne(dataset, dims = 2, perplexity = 30)
 tsne_data <- as.data.frame(tsne_result$Y)
 colnames(tsne_data) <- c("Dim1", "Dim2")
 tsne_data$Cluster <- as.factor(kmeans_result$cluster)
@@ -175,7 +220,7 @@ dataset.with.clusters$clusters <- as.factor(kmeans_result$cluster)
 
 #Install this package for DBSCAN clustering, just uncomment
 #install.packages("fpc")
-write.csv(dataset, file = "cleaned_dataset.csv",sep = ";", row.names = FALSE)
+# write.csv(dataset, file = "cleaned_dataset.csv",sep = ";", row.names = FALSE)
 library(fpc)
 
 # install.packages("dbscan")
