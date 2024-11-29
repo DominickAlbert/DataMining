@@ -160,17 +160,18 @@ for (i in 1:10) {
 }
 
 # Plot WCSS to find the elbow point
-plot(1:15, wcss, type = "b", pch = 19, frame = FALSE, xlab = "Number of Clusters", ylab = "Total Within-Cluster Sum of Squares")
+plot(1:10, wcss, type = "b", pch = 19, frame = FALSE, xlab = "Number of Clusters", ylab = "Total Within-Cluster Sum of Squares")
 
 # Cluster the data using kMeans
 kmeans_result <- kmeans(dataset, centers = 4, nstart=25)
 
+pca_result <- prcomp(dataset, center = TRUE, scale. = TRUE)
 # Assign the cluster to the appropriate row
 dataset <- cbind(dataset, kmeans_result$cluster)
 head(dataset,50)
 
 #PCA
-pca_result <- prcomp(dataset, center = TRUE, scale. = TRUE)
+
 
 # Correlation Test
 # install.packages("corrplot")
@@ -205,38 +206,29 @@ library(plotly)
 # Save the plot into a html file
 # htmlwidgets::saveWidget(p, "3d_pca_plot.html")
 
-library(Rtsne)
-tsne_result <- Rtsne(dataset, dims = 2, perplexity = 30)
-tsne_data <- as.data.frame(tsne_result$Y)
-colnames(tsne_data) <- c("Dim1", "Dim2")
-tsne_data$Cluster <- as.factor(kmeans_result$cluster)
+# DBSCAN
+install.packages("dbscan")
+library(dbscan)
+set.seed(4920)
+dbscan_result <- dbscan(dataset, eps = 0.5, minPts = 5)
+dataset <- cbind(dataset, DBSCAN_Cluster = dbscan_result$cluster)
+unique(dataset$DBSCAN_Cluster)
+dataset_with_dbscanpca <- cbind(cluster = dbscan_result$cluster, pca_result$x)
+dataset_with_dbscanpca <- as.data.frame(dataset_with_dbscanpca)
 
-# install.packages("ggplot2")
-library(ggplot2)
-ggplot(tsne_data, aes(x = Dim1, y = Dim2, color = Cluster)) +geom_point(size = 3) +labs(title = "K-means Clustering (t-SNE)", x = "Dimension 1", y = "Dimension 2") +theme_minimal()
-dataset.with.clusters <- dataset
-dataset.with.clusters$clusters <- as.factor(kmeans_result$cluster)
-# ggplot(dataset.with.clusters, aes(x = Petal.Length, y = Petal.Width, color = Cluster)) +
-#   geom_point(size = 3) +
-#   labs(title = "K-means Clustering on Iris Data")
+# Remove unused PC
+dataset_with_dbscanpca = subset(dataset_with_dbscanpca, select = -PC4)
+dataset_with_dbscanpca = subset(dataset_with_dbscanpca, select = -PC5)
+dataset_with_dbscanpca = subset(dataset_with_dbscanpca, select = -PC6)
 
-#Install this package for DBSCAN clustering, just uncomment
-#install.packages("fpc")
-# write.csv(dataset, file = "cleaned_dataset.csv",sep = ";", row.names = FALSE)
-library(fpc)
-
-# install.packages("dbscan")
-# library(dbscan)
-# DBSCAN <- dbscan(dataset, eps=0.45, MinPts = 5)
-
-#Install this package for GMM (Gaussian Mixture Model) clustering, just uncomment
-# install.packages("mclust")
-
-# library(mclust)
-
-#G = number of clusters
-# gmm_model <- Mclust(dataset, G = 3 )
-
-#summary(gmm_model)
-#get the cluster assignments
-#cluster_assignments <- predict(gmm_model)$classification
+plot_ly(dataset_with_dbscanpca, 
+        x = ~PC1, y = ~PC2, z = ~PC3, 
+        color = ~as.factor(cluster), 
+        colors = "Set1") %>%
+  add_markers() %>%
+  layout(scene = list(
+    xaxis = list(title = 'PC1'),
+    yaxis = list(title = 'PC2'),
+    zaxis = list(title = 'PC3')),
+    title = "3D PCA Plot by DBSCAN Cluster"
+  )
