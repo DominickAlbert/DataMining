@@ -22,7 +22,7 @@ bankingDT_Processed <- bankingDT_Processed %>%
                             university.degree = "tertiary",
                             illiterate = "unknown",
                             unknown = "unknown")
-        )
+  )
 
 # Changing the value -1 of pdays in marketingDT_Processed 
 # because marketingDT_Processed value -1 means not previously contacted
@@ -33,7 +33,7 @@ marketingDT_Processed <- marketingDT_Processed %>%
 # Changing nonexistent into unknown so the data integration can go smooth
 bankingDT_Processed <- bankingDT_Processed %>%
   mutate(poutcome = recode(poutcome,
-                            nonexistent="unknown")
+                           nonexistent="unknown")
   )
 
 # Subsetting the dataset so it only have the same columns
@@ -135,39 +135,69 @@ length(dataset$age)
 for (col in c("duration", "campaign", "age")) {
   dataset[[col]] <- (dataset[[col]] - min(dataset[[col]])) / (max(dataset[[col]]) - min(dataset[[col]]))
 }
+# Separate the dataset into two groups: "yes" (y == 1) and "no" (y == 0)
+dataset_yes <- dataset[dataset$y == 1, ]
+dataset_no <- dataset[dataset$y == 0, ]
+
 
 # Removing y as we dont need it anymore
-dataset <- subset(dataset, select = -y)
+# dataset <- subset(dataset, select = -y)
+dataset_yes <- subset(dataset_yes, select = -y)
+dataset_no <- subset(dataset_no, select = -y)
 
-dataset <- dataset[!duplicated(dataset),]
+# dataset <- dataset[!duplicated(dataset),]
+# dataset <- dataset[!duplicated(dataset),]
+dataset_yes <- dataset_yes[!duplicated(dataset_yes),]
+dataset_no <- dataset_no[!duplicated(dataset_no),]
 
 # Should be 73945
-length(dataset$age)
+# length(dataset$age)
+length(dataset_yes$age)
+length(dataset_no$age)
 
-write.csv(dataset, file = "Combine.csv", row.names = FALSE)
+# write.csv(dataset, file = "Combine.csv", row.names = FALSE)
+write.csv(dataset_yes, file = "Combine_yes.csv", row.names = FALSE)
+write.csv(dataset_no, file = "Combine_no.csv", row.names = FALSE)
 
 # -----------------------------Kebawah belum diganti--------------------------------
 
 # Reading the Combine CSV for better consistency
-dataset = read.csv("Combine.csv")
+# dataset = read.csv("Combine.csv")
+dataset_yes = read.csv("Combine_yes.csv")
+dataset_no = read.csv("Combine_no.csv")
 
-# Elbow method
-set.seed(4920)
-wcss <- vector()
-for (i in 1:10) {
-  kmeans_temp <- kmeans(dataset, centers = i, nstart = 25)
-  wcss[i] <- kmeans_temp$tot.withinss
-}
+# # Elbow method
+# set.seed(4920)
+# wcss <- vector()
+# for (i in 1:10) {
+#   kmeans_temp <- kmeans(dataset, centers = i, nstart = 25)
+#   wcss[i] <- kmeans_temp$tot.withinss
+# }
 
-# Plot WCSS to find the elbow point
-plot(1:10, wcss, type = "b", pch = 19, frame = FALSE, xlab = "Number of Clusters", ylab = "Total Within-Cluster Sum of Squares")
+# # Plot WCSS to find the elbow point
+# plot(1:10, wcss, type = "b", pch = 19, frame = FALSE, xlab = "Number of Clusters", ylab = "Total Within-Cluster Sum of Squares")
 
 # Cluster the data using kMeans
-kmeans_result <- kmeans(dataset, centers = 4, nstart=25)
+# kmeans_result <- kmeans(dataset, centers = 4, nstart=25)
 
-pca_result <- prcomp(dataset, center = TRUE, scale. = TRUE)
+# cluster yes no
+#* Clustering for "yes" data
+kmeans_yes <- kmeans(dataset_yes, centers = 4, nstart = 25)
+dataset_yes$cluster <- kmeans_yes$cluster
+
+#* Clustering for "no" data
+kmeans_no <- kmeans(dataset_no, centers = 4, nstart = 25)
+dataset_no$cluster <- kmeans_no$cluster
+
+# pca_result <- prcomp(dataset, center = TRUE, scale. = TRUE)
+pca_resultyes <- prcomp(dataset_yes, center = TRUE, scale. = TRUE)
+pca_resultno <- prcomp(dataset_no, center = TRUE, scale. = TRUE)
+
 # Assign the cluster to the appropriate row
-dataset <- cbind(dataset, kmeans_result$cluster)
+# dataset <- cbind(dataset, kmeans_result$cluster)
+dataset_yes <- cbind(dataset_yes, kmeans_yes$cluster)
+dataset_no <- cbind(dataset_no, kmeans_no$cluster)
+
 head(dataset,50)
 
 #PCA
@@ -175,60 +205,106 @@ head(dataset,50)
 
 # Correlation Test
 # install.packages("corrplot")
+# library(corrplot)
+# correlate <- cbind(dataset, pca_result$x)
+# cor_matrix <- cor(correlate)
+# corrplot(cor_matrix, method = "color", type = "upper", tl.col = "black", tl.srt = 45)
+
+install.packages("corrplot")
 library(corrplot)
-correlate <- cbind(dataset, pca_result$x)
-cor_matrix <- cor(correlate)
-corrplot(cor_matrix, method = "color", type = "upper", tl.col = "black", tl.srt = 45)
+#corr for yes data
+correlate_yes <- cbind(dataset_yes, pca_resultyes$x)
+cor_matrix_yes <- cor(correlate_yes)
+corrplot(cor_matrix_yes, method = "color", type = "upper", tl.col = "black", tl.srt = 45)
 
-# Add PCA scores and the cluster result to a new DF
-dataset_with_pca <- cbind(cluster = kmeans_result$cluster, pca_result$x)
-dataset_with_pca <- as.data.frame(dataset_with_pca)
+#corr for no data
+correlate_no <- cbind(dataset_no, pca_resultno$x)
+cor_matrix_no <- cor(correlate_no)
+corrplot(cor_matrix_no, method = "color", type = "upper", tl.col = "black", tl.srt = 45)
 
-# Remove unused PC
-dataset_with_pca = subset(dataset_with_pca, select = -PC4)
-dataset_with_pca = subset(dataset_with_pca, select = -PC5)
-dataset_with_pca = subset(dataset_with_pca, select = -PC6)
+# # Add PCA scores and the cluster result to a new DF
+# dataset_with_pca <- cbind(cluster = kmeans_result$cluster, pca_result$x)
+# dataset_with_pca <- as.data.frame(dataset_with_pca)
 
-# install.packages("plotly")
+# # Remove unused PC
+# dataset_with_pca = subset(dataset_with_pca, select = -PC4)
+# dataset_with_pca = subset(dataset_with_pca, select = -PC5)
+# dataset_with_pca = subset(dataset_with_pca, select = -PC6)
+
+# Combine only PC1, PC2, and PC3 with the cluster results for yes an no data (shortcut)
+datasetyes_with_pca <- cbind(cluster = kmeans_yes$cluster, pca_resultyes$x[, 1:3])
+datasetyes_with_pca <- as.data.frame(datasetyes_with_pca)
+datasetno_with_pca <- cbind(cluster = kmeans_no$cluster, pca_resultno$x[, 1:3])
+datasetno_with_pca <- as.data.frame(datasetno_with_pca)
+
+
+install.packages("plotly")
 # Load the plotly library
 library(plotly)
 
 # 3D Scatter plot
- p <- plot_ly(dataset_with_pca, x = ~PC1, y = ~PC2, z = ~PC3, color = ~as.factor(cluster), colors = "Set1") %>%
+#  p <- plot_ly(dataset_with_pca, x = ~PC1, y = ~PC2, z = ~PC3, color = ~as.factor(cluster), colors = "Set1") %>%
+#   add_markers() %>%
+#   layout(scene = list(
+#     xaxis = list(title = 'PC1'),
+#     yaxis = list(title = 'PC2'),
+#     zaxis = list(title = 'PC3')),
+#     title = "3D PCA Plot by Cluster"
+#   )
+
+# 3D plot for "yes" data using PCA components
+p_yes <- plot_ly(datasetyes_with_pca , x = ~PC1, y = ~PC2, z = ~PC3, color = ~as.factor(cluster), colors = "Set1") %>%
   add_markers() %>%
   layout(scene = list(
     xaxis = list(title = 'PC1'),
     yaxis = list(title = 'PC2'),
     zaxis = list(title = 'PC3')),
-    title = "3D PCA Plot by Cluster"
+    title = "3D PCA Plot for 'Yes' Data"
   )
+
+# Show the plot
+p_yes
+
+# 3D plot for "no" data using PCA components
+p_no <- plot_ly(datasetno_with_pca, x = ~PC1, y = ~PC2, z = ~PC3, color = ~as.factor(cluster), colors = "Set1") %>%
+  add_markers() %>%
+  layout(scene = list(
+    xaxis = list(title = 'PC1'),
+    yaxis = list(title = 'PC2'),
+    zaxis = list(title = 'PC3')),
+    title = "3D PCA Plot for 'No' Data"
+  )
+
+p_no
 
 # Save the plot into a html file
 # htmlwidgets::saveWidget(p, "3d_pca_plot.html")
+htmlwidgets::saveWidget(p_yes, "3d_pca_plot_yes.html")
+htmlwidgets::saveWidget(p_no, "3d_pca_plot_no.html")
 
-# DBSCAN
-install.packages("dbscan")
-library(dbscan)
-set.seed(4920)
-dbscan_result <- dbscan(dataset, eps = 0.5, minPts = 5)
-dataset <- cbind(dataset, DBSCAN_Cluster = dbscan_result$cluster)
-unique(dataset$DBSCAN_Cluster)
-dataset_with_dbscanpca <- cbind(cluster = dbscan_result$cluster, pca_result$x)
-dataset_with_dbscanpca <- as.data.frame(dataset_with_dbscanpca)
+# # DBSCAN
+# install.packages("dbscan")
+# library(dbscan)
+# set.seed(4920)
+# dbscan_result <- dbscan(dataset, eps = 0.5, minPts = 5)
+# dataset <- cbind(dataset, DBSCAN_Cluster = dbscan_result$cluster)
+# unique(dataset$DBSCAN_Cluster)
+# dataset_with_dbscanpca <- cbind(cluster = dbscan_result$cluster, pca_result$x)
+# dataset_with_dbscanpca <- as.data.frame(dataset_with_dbscanpca)
 
-# Remove unused PC
-dataset_with_dbscanpca = subset(dataset_with_dbscanpca, select = -PC4)
-dataset_with_dbscanpca = subset(dataset_with_dbscanpca, select = -PC5)
-dataset_with_dbscanpca = subset(dataset_with_dbscanpca, select = -PC6)
+# # Remove unused PC
+# dataset_with_dbscanpca = subset(dataset_with_dbscanpca, select = -PC4)
+# dataset_with_dbscanpca = subset(dataset_with_dbscanpca, select = -PC5)
+# dataset_with_dbscanpca = subset(dataset_with_dbscanpca, select = -PC6)
 
-plot_ly(dataset_with_dbscanpca, 
-        x = ~PC1, y = ~PC2, z = ~PC3, 
-        color = ~as.factor(cluster), 
-        colors = "Set1") %>%
-  add_markers() %>%
-  layout(scene = list(
-    xaxis = list(title = 'PC1'),
-    yaxis = list(title = 'PC2'),
-    zaxis = list(title = 'PC3')),
-    title = "3D PCA Plot by DBSCAN Cluster"
-  )
+# plot_ly(dataset_with_dbscanpca, 
+#         x = ~PC1, y = ~PC2, z = ~PC3, 
+#         color = ~as.factor(cluster), 
+#         colors = "Set1") %>%
+#   add_markers() %>%
+#   layout(scene = list(
+#     xaxis = list(title = 'PC1'),
+#     yaxis = list(title = 'PC2'),
+#     zaxis = list(title = 'PC3')),
+#     title = "3D PCA Plot by DBSCAN Cluster"
+#   )
