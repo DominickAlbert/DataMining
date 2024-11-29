@@ -172,22 +172,23 @@ head(dataset,50)
 #PCA
 pca_result <- prcomp(dataset, center = TRUE, scale. = TRUE)
 
-# Add PCA scores to the original dataset
+# Correlation Test
+# install.packages("corrplot")
+library(corrplot)
+correlate <- cbind(dataset, pca_result$x)
+cor_matrix <- cor(correlate)
+corrplot(cor_matrix, method = "color", type = "upper", tl.col = "black", tl.srt = 45)
+
+# Add PCA scores and the cluster result to a new DF
 dataset_with_pca <- cbind(cluster = kmeans_result$cluster, pca_result$x)
 dataset_with_pca <- as.data.frame(dataset_with_pca)
 
-names(dataset_with_pca)
-
+# Remove unused PC
 dataset_with_pca = subset(dataset_with_pca, select = -PC4)
 dataset_with_pca = subset(dataset_with_pca, select = -PC5)
 dataset_with_pca = subset(dataset_with_pca, select = -PC6)
 
-print(head(dataset_with_pca,10))
-
-table(dataset_with_pca$cluster)
-
-install.packages("plotly")
-
+# install.packages("plotly")
 # Load the plotly library
 library(plotly)
 
@@ -201,7 +202,8 @@ library(plotly)
     title = "3D PCA Plot by Cluster"
   )
 
-htmlwidgets::saveWidget(p, "3d_pca_plot.html")
+# Save the plot into a html file
+# htmlwidgets::saveWidget(p, "3d_pca_plot.html")
 
 library(Rtsne)
 tsne_result <- Rtsne(dataset, dims = 2, perplexity = 30)
