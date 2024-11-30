@@ -403,3 +403,67 @@ p_hc_no <- plot_ly(datasetno_with_pca, x = ~PC1, y = ~PC2, z = ~PC3, color = ~as
 
 # Show the plot
 p_hc_no
+
+# ----------------------------- OPTICS CLUSTERING ----------------------------
+
+optics_yes <- optics(dataset_yes, minPts = 5)
+
+# Extract clusters from OPTICS result using the reachability plot (set eps)
+optics_clusters <- extractDBSCAN(optics_yes, eps = 0.355)
+
+# Assign the cluster labels to the dataset
+datasetyes_with_pca$optics_cluster <- optics_clusters$cluster
+
+# Check the first few rows of cluster labels
+head(datasetyes_with_pca$optics_cluster)
+
+# 3D plot for OPTICS Clustering ("Yes" data)
+p_yes_optics <- plot_ly(datasetyes_with_pca, 
+                        x = ~PC1, 
+                        y = ~PC2, 
+                        z = ~PC3, 
+                        color = ~as.factor(optics_cluster), 
+                        colors = "Set1", 
+                        type = "scatter3d", 
+                        mode = "markers") %>%
+  layout(scene = list(
+    xaxis = list(title = 'PC1'),
+    yaxis = list(title = 'PC2'),
+    zaxis = list(title = 'PC3')
+  ),
+  title = "3D OPTICS Clustering Plot for 'Yes' Data")
+
+# Show the plot for OPTICS Clustering 'Yes' data
+p_yes_optics
+
+
+# Apply OPTICS Clustering for "No" data (using "dbscan" package)
+optics_no <- optics(dataset_no, minPts = 5)
+
+# Extract clusters from OPTICS result using the reachability plot (set eps)
+optics_clusters_no <- extractDBSCAN(optics_no, eps = 0.355)
+
+# Assign the cluster labels to the "No" dataset
+datasetno_with_pca$optics_cluster <- optics_clusters_no$cluster
+
+# Check the first few rows of cluster labels for "No" data
+head(datasetno_with_pca$optics_cluster)
+
+# 3D plot for OPTICS Clustering ("No" data)
+p_no_optics <- plot_ly(datasetno_with_pca, 
+                       x = ~PC1, 
+                       y = ~PC2, 
+                       z = ~PC3, 
+                       color = ~as.factor(optics_cluster), 
+                       colors = "Set2",  # Choose a different color set
+                       type = "scatter3d", 
+                       mode = "markers") %>%
+  layout(scene = list(
+    xaxis = list(title = 'PC1'),
+    yaxis = list(title = 'PC2'),
+    zaxis = list(title = 'PC3')
+  ),
+  title = "3D OPTICS Clustering Plot for 'No' Data")
+
+# Show the plot for OPTICS Clustering 'No' data
+p_no_optics
