@@ -193,12 +193,6 @@ dataset_no$cluster <- kmeans_no$cluster
 pca_resultyes <- prcomp(dataset_yes, center = TRUE, scale. = TRUE)
 pca_resultno <- prcomp(dataset_no, center = TRUE, scale. = TRUE)
 
-# Assign the cluster to the appropriate row
-# dataset <- cbind(dataset, kmeans_result$cluster)
-dataset_yes <- cbind(dataset_yes, kmeans_yes$cluster)
-dataset_no <- cbind(dataset_no, kmeans_no$cluster)
-
-head(dataset,50)
 
 #PCA
 
@@ -210,7 +204,7 @@ head(dataset,50)
 # cor_matrix <- cor(correlate)
 # corrplot(cor_matrix, method = "color", type = "upper", tl.col = "black", tl.srt = 45)
 
-install.packages("corrplot")
+#install.packages("corrplot")
 library(corrplot)
 #corr for yes data
 correlate_yes <- cbind(dataset_yes, pca_resultyes$x)
@@ -238,7 +232,7 @@ datasetno_with_pca <- cbind(cluster = kmeans_no$cluster, pca_resultno$x[, 1:3])
 datasetno_with_pca <- as.data.frame(datasetno_with_pca)
 
 
-install.packages("plotly")
+#install.packages("plotly")
 # Load the plotly library
 library(plotly)
 
@@ -284,7 +278,52 @@ htmlwidgets::saveWidget(p_no, "3d_pca_plot_no.html")
 
 # # DBSCAN
 # install.packages("dbscan")
-# library(dbscan)
+library(dbscan)
+dataset_yes = read.csv("Combine_yes.csv")
+dataset_no = read.csv("Combine_no.csv")
+
+dbscan_yes <- dbscan(dataset_yes, eps = 0.5, minPts = 5)
+dataset_yes$cluster <- dbscan_yes$cluster
+dbscan_no <- dbscan(dataset_no, eps = 0.5, minPts = 5)
+dataset_no$cluster <- dbscan_no$cluster
+
+pca_resultyes <- prcomp(dataset_yes, center = TRUE, scale. = TRUE)
+pca_resultno <- prcomp(dataset_no, center = TRUE, scale. = TRUE)
+
+library(corrplot)
+#corr for yes data
+correlate_yes <- cbind(dataset_yes, pca_resultyes$x)
+cor_matrix_yes <- cor(correlate_yes)
+corrplot(cor_matrix_yes, method = "color", type = "upper", tl.col = "black", tl.srt = 45)
+
+#corr for no data
+correlate_no <- cbind(dataset_no, pca_resultno$x)
+cor_matrix_no <- cor(correlate_no)
+corrplot(cor_matrix_no, method = "color", type = "upper", tl.col = "black", tl.srt = 45)
+
+# Combine only PC1, PC2, and PC3 with the cluster results for yes an no data (shortcut)
+datasetyes_with_pca <- cbind(cluster = dbscan_yes$cluster, pca_resultyes$x[, 1:3])
+datasetyes_with_pca <- as.data.frame(datasetyes_with_pca)
+datasetno_with_pca <- cbind(cluster = dbscan_no$cluster, pca_resultno$x[, 1:3])
+datasetno_with_pca <- as.data.frame(datasetno_with_pca)
+
+plot_ly(datasetyes_with_pca , x = ~PC1, y = ~PC2, z = ~PC3, color = ~as.factor(cluster), colors = "Set1") %>%
+  add_markers() %>%
+  layout(scene = list(
+    xaxis = list(title = 'PC1'),
+    yaxis = list(title = 'PC2'),
+    zaxis = list(title = 'PC3')),
+    title = "3D PCA Plot for 'Yes' Data"
+  )
+
+plot_ly(datasetno_with_pca, x = ~PC1, y = ~PC2, z = ~PC3, color = ~as.factor(cluster), colors = "Set1") %>%
+  add_markers() %>%
+  layout(scene = list(
+    xaxis = list(title = 'PC1'),
+    yaxis = list(title = 'PC2'),
+    zaxis = list(title = 'PC3')),
+    title = "3D PCA Plot for 'No' Data"
+  )
 # set.seed(4920)
 # dbscan_result <- dbscan(dataset, eps = 0.5, minPts = 5)
 # dataset <- cbind(dataset, DBSCAN_Cluster = dbscan_result$cluster)
