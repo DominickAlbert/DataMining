@@ -149,11 +149,24 @@ length(dataset_no$age)
 write.csv(dataset_yes, file = "Combine_yes.csv", row.names = FALSE)
 write.csv(dataset_no, file = "Combine_no.csv", row.names = FALSE)
 
-# -----------------------------Kebawah belum diganti--------------------------------
+# -----------------------------Clustering and PCA--------------------------------
 
 # Reading the Combine CSV for better consistency
 dataset_yes = read.csv("Combine_yes.csv")
 dataset_no = read.csv("Combine_no.csv")
+
+# -----------------------------KMEANS--------------------------------
+
+# cluster yes no
+#* Clustering for "yes" data
+kmeans_yes <- kmeans(dataset_yes, centers = 4, nstart = 25)
+dataset_yes$cluster <- kmeans_yes$cluster
+
+#* Clustering for "no" data
+kmeans_no <- kmeans(dataset_no, centers = 4, nstart = 25)
+dataset_no$cluster <- kmeans_no$cluster
+
+# -----------------------------Elbow method--------------------------------
 
 # # Elbow method
 # set.seed(4920)
@@ -166,27 +179,12 @@ dataset_no = read.csv("Combine_no.csv")
 # # Plot WCSS to find the elbow point
 # plot(1:10, wcss, type = "b", pch = 19, frame = FALSE, xlab = "Number of Clusters", ylab = "Total Within-Cluster Sum of Squares")
 
-# Cluster the data using kMeans
-# kmeans_result <- kmeans(dataset, centers = 4, nstart=25)
-
-# cluster yes no
-#* Clustering for "yes" data
-kmeans_yes <- kmeans(dataset_yes, centers = 4, nstart = 25)
-dataset_yes$cluster <- kmeans_yes$cluster
-
-#* Clustering for "no" data
-kmeans_no <- kmeans(dataset_no, centers = 4, nstart = 25)
-dataset_no$cluster <- kmeans_no$cluster
+# -----------------------------PCA--------------------------------
 
 pca_resultyes <- prcomp(dataset_yes, center = TRUE, scale. = TRUE)
 pca_resultno <- prcomp(dataset_no, center = TRUE, scale. = TRUE)
 
-
-
-#PCA
-
-
-# Correlation Test
+# -----------------------------Correlation Test--------------------------------
 
 #install.packages("corrplot")
 library(corrplot)
@@ -218,7 +216,7 @@ p_yes <- plot_ly(datasetyes_with_pca , x = ~PC1, y = ~PC2, z = ~PC3, color = ~as
     xaxis = list(title = 'PC1'),
     yaxis = list(title = 'PC2'),
     zaxis = list(title = 'PC3')),
-    title = "3D PCA Plot for 'Yes' Data"
+    title = "3D Kmeans Plot for 'Yes' Data"
   )
 
 # Show the plot
@@ -231,23 +229,19 @@ p_no <- plot_ly(datasetno_with_pca, x = ~PC1, y = ~PC2, z = ~PC3, color = ~as.fa
     xaxis = list(title = 'PC1'),
     yaxis = list(title = 'PC2'),
     zaxis = list(title = 'PC3')),
-    title = "3D PCA Plot for 'No' Data"
+    title = "3D Kmeans Plot for 'No' Data"
   )
 
 p_no
 
-# Save the plot into a html file
-# htmlwidgets::saveWidget(p, "3d_pca_plot.html")
-htmlwidgets::saveWidget(p_yes, "3d_pca_plot_yes.html")
-htmlwidgets::saveWidget(p_no, "3d_pca_plot_no.html")
+# ----------------------------- DBSCAN CLUSTERING ----------------------------
 
 # Install the 'dbscan' package if you haven't already
-install.packages("dbscan")
+# install.packages("dbscan")
 
 # Load the DBSCAN library
 library(dbscan)
-dataset_yes = read.csv("Combine_yes.csv")
-dataset_no = read.csv("Combine_no.csv")
+
 # DBSCAN Clustering for "Yes" Data
 dbscan_yes <- dbscan(dataset_yes, eps = 0.5, minPts = 5)
 datasetyes_with_pca$dbscan_cluster <- dbscan_yes$cluster
@@ -255,21 +249,7 @@ datasetyes_with_pca$dbscan_cluster <- dbscan_yes$cluster
 # DBSCAN Clustering for "No" Data
 dbscan_no <- dbscan(dataset_no, eps = 0.5, minPts = 5)
 datasetno_with_pca$dbscan_cluster <- dbscan_no$cluster
-
-# Install the 'mclust' package if you haven't already
-#install.packages("mclust")
-
-# Load the Mclust library
-library(mclust)
-dataset_yes = read.csv("Combine_yes.csv")
-dataset_no = read.csv("Combine_no.csv")
-# GMM Clustering for "Yes" Data
-gmm_yes <- Mclust(dataset_yes)
-datasetyes_with_pca$gmm_cluster <- gmm_yes$classification
-
-# GMM Clustering for "No" Data
-gmm_no <- Mclust(dataset_no)
-datasetno_with_pca$gmm_cluster <- gmm_no$classification
+dataset_no$dbscan <- dbscan_no$cluster
 
 # 3D plot for DBSCAN Clustering ("Yes" data)
 p_yes_dbscan <- plot_ly(datasetyes_with_pca, x = ~PC1, y = ~PC2, z = ~PC3, color = ~as.factor(dbscan_cluster), colors = "Set1") %>%
@@ -297,112 +277,10 @@ p_no_dbscan <- plot_ly(datasetno_with_pca, x = ~PC1, y = ~PC2, z = ~PC3, color =
 # Show the plot for DBSCAN 'No' data
 p_no_dbscan
 
-# 3D plot for GMM Clustering ("Yes" data)
-p_yes_gmm <- plot_ly(datasetyes_with_pca, x = ~PC1, y = ~PC2, z = ~PC3, color = ~as.factor(gmm_cluster), colors = "Set1") %>%
-  add_markers() %>%
-  layout(scene = list(
-    xaxis = list(title = 'PC1'),
-    yaxis = list(title = 'PC2'),
-    zaxis = list(title = 'PC3')),
-    title = "3D GMM Plot for 'Yes' Data"
-  )
-
-# Show the plot for GMM 'Yes' data
-p_yes_gmm
-
-# 3D plot for GMM Clustering ("No" data)
-p_no_gmm <- plot_ly(datasetno_with_pca, x = ~PC1, y = ~PC2, z = ~PC3, color = ~as.factor(gmm_cluster), colors = "Set1") %>%
-  add_markers() %>%
-  layout(scene = list(
-    xaxis = list(title = 'PC1'),
-    yaxis = list(title = 'PC2'),
-    zaxis = list(title = 'PC3')),
-    title = "3D GMM Plot for 'No' Data"
-  )
-
-# Show the plot for GMM 'No' data
-p_no_gmm
-
 # Save the results for DBSCAN clustering
 write.csv(dataset_yes, file = "Dataset_yes_with_DBSCAN.csv", row.names = FALSE)
 write.csv(dataset_no, file = "Dataset_no_with_DBSCAN.csv", row.names = FALSE)
 
-# Save the results for GMM clustering
-write.csv(dataset_yes, file = "Dataset_yes_with_GMM.csv", row.names = FALSE)
-write.csv(dataset_no, file = "Dataset_no_with_GMM.csv", row.names = FALSE)
-
-#coba
-# Install necessary packages if you don't have them
-install.packages("kohonen")  # For Self-Organizing Maps (SOM)
-install.packages("cluster")  # For Hierarchical Clustering
-install.packages("factoextra")  # For better visualization of Hierarchical Clustering
-
-library(kohonen)  # For SOM
-library(cluster)   # For Hierarchical Clustering
-library(factoextra)  # For visualizing Hierarchical Clustering
-
-
-# ---------------------- HIERARCHICAL CLUSTERING ----------------------
-
-# Hierarchical clustering for "Yes" data
-dist_yes <- dist(dataset_yes)  # Compute the distance matrix
-hc_yes <- hclust(dist_yes, method = "ward.D2")  # Perform hierarchical clustering
-dataset_yes$hclust_cluster <- cutree(hc_yes, k = 4)  # Cut the dendrogram to form 4 clusters
-
-# Hierarchical clustering for "No" data
-dist_no <- dist(dataset_no)  # Compute the distance matrix
-hc_no <- hclust(dist_no, method = "ward.D2")  # Perform hierarchical clustering
-dataset_no$hclust_cluster <- cutree(hc_no, k = 4)  # Cut the dendrogram to form 4 clusters
-
-# Visualizing Hierarchical Clustering for "Yes" data
-fviz_dend(hc_yes, rect = TRUE, k = 4, main = "Hierarchical Clustering Dendrogram (Yes Data)")
-
-# Visualizing Hierarchical Clustering for "No" data
-fviz_dend(hc_no, rect = TRUE, k = 4, main = "Hierarchical Clustering Dendrogram (No Data)")
-
-
-# Adding Hierarchical Clustering and SOM results to the dataset
-
-# For "Yes" data
-datasetyes_with_pca$hclust_cluster <- as.factor(dataset_yes$hclust_cluster)
-datasetyes_with_pca$som_cluster <- as.factor(dataset_yes$som_cluster)
-
-# For "No" data
-datasetno_with_pca$hclust_cluster <- as.factor(dataset_no$hclust_cluster)
-datasetno_with_pca$som_cluster <- as.factor(dataset_no$som_cluster)
-
-
-# ---------------------- HIERARCHICAL CLUSTERING 3D PLOT ----------------------
-
-# 3D Plot for Hierarchical Clustering (Yes data)
-# Create a 3D plot using plotly for "Yes" data
-p_hc_yes <- plot_ly(datasetyes_with_pca, x = ~PC1, y = ~PC2, z = ~PC3, color = ~as.factor(hclust_cluster), colors = "Set1") %>%
-  add_markers() %>%
-  layout(
-    title = "3D Hierarchical Clustering (Yes Data)",  # Set title here
-    scene = list(
-      xaxis = list(title = 'PC1'),
-      yaxis = list(title = 'PC2'),
-      zaxis = list(title = 'PC3')
-    )
-  )
-
-# Show the plot
-p_hc_yes
-
-
-# 3D Plot for Hierarchical Clustering (No data)
-# Create a 3D plot using plotly for "No" data
-p_hc_no <- plot_ly(datasetno_with_pca, x = ~PC1, y = ~PC2, z = ~PC3, color = ~as.factor(hclust_cluster), colors = "Set1") %>%
-  add_markers() %>%
-  layout(scene = list(
-    xaxis = list(title = 'PC1'),
-    yaxis = list(title = 'PC2'),
-    zaxis = list(title = 'PC3')
-  ), title = "3D Hierarchical Clustering (No Data)")
-
-# Show the plot
-p_hc_no
 
 # ----------------------------- OPTICS CLUSTERING ----------------------------
 
@@ -436,18 +314,15 @@ p_yes_optics <- plot_ly(datasetyes_with_pca,
 # Show the plot for OPTICS Clustering 'Yes' data
 p_yes_optics
 
-
 # Apply OPTICS Clustering for "No" data (using "dbscan" package)
 optics_no <- optics(dataset_no, minPts = 5)
 
 # Extract clusters from OPTICS result using the reachability plot (set eps)
 optics_clusters_no <- extractDBSCAN(optics_no, eps = 0.355)
 
-# Assign the cluster labels to the "No" dataset
+# Assign the cluster labels to the "No" data set
 datasetno_with_pca$optics_cluster <- optics_clusters_no$cluster
-
-# Check the first few rows of cluster labels for "No" data
-head(datasetno_with_pca$optics_cluster)
+dataset_no$optics <- optics_clusters_no$cluster
 
 # 3D plot for OPTICS Clustering ("No" data)
 p_no_optics <- plot_ly(datasetno_with_pca, 
@@ -467,3 +342,92 @@ p_no_optics <- plot_ly(datasetno_with_pca,
 
 # Show the plot for OPTICS Clustering 'No' data
 p_no_optics
+
+# ----------------------------- SAMPLING ----------------------------
+
+# Define the sample fraction (e.g., 20% of the data)
+sample_fraction <- 0.2
+
+# Perform stratified sampling based on KMeans clusters
+sample_no_kmeans <- dataset_no %>%
+  group_by(cluster) %>%
+  sample_frac(sample_fraction)
+
+sample_no_kmeans <- sample_no_kmeans %>%
+  select(-optics,-dbscan)
+
+# Perform stratified sampling based on DBSCAN clusters
+sample_no_dbscan <- dataset_no %>%
+  group_by(dbscan) %>%
+  sample_frac(sample_fraction)
+
+sample_no_dbscan <- sample_no_dbscan %>% 
+  select(-cluster,-optics)
+
+# Perform stratified sampling based on OPTICS clusters
+sample_no_optics <- dataset_no %>%
+  group_by(optics) %>%
+  sample_frac(sample_fraction)
+
+sample_no_optics <- sample_no_optics %>% 
+  select(-cluster,-dbscan)
+
+# ----------------------------- EVALUATION ----------------------------
+
+# install.packages("clusterSim")
+# install.packages("clValid")
+
+library(clusterSim)
+library(clValid)
+
+# Davies-Bouldin Index for sample_no_kmeans
+kmeans_db_index <- index.DB(subset(sample_no_kmeans, select = -cluster),sample_no_kmeans$cluster,centrotypes = "centroids")
+
+# Davies-Bouldin Index for sample_no_dbscan
+dbscan_db_index <- index.DB(subset(sample_no_dbscan, select = -dbscan),sample_no_dbscan$dbscan,centrotypes = "centroids")
+
+# Davies-Bouldin Index for sample_no_optics
+optics_db_index <- index.DB(subset(sample_no_optics, select = -optics),sample_no_optics$optics,centrotypes = "centroids")
+
+# Davies-Bouldin Index for yes_kmeans
+yes_kmeans_db_index <- index.DB(dataset_yes,kmeans_yes$cluster)
+
+# Davies-Bouldin Index for yes_optics
+yes_optics_db_index <- index.DB(dataset_yes,optics_clusters$cluster)
+
+# Davies-Bouldin Index for yes_dbscan
+yes_dbscan_db_index <- index.DB(dataset_yes,dbscan_yes$cluster)
+
+# Print the Davies-Bouldin Indices
+kmeans_db_index$DB
+dbscan_db_index$DB
+optics_db_index$DB
+yes_kmeans_db_index$DB
+yes_optics_db_index$DB
+yes_dbscan_db_index$DB
+
+# Dunn Index for sample_no_kmeans
+kmeans_dunn_index <- dunn(clusters = sample_no_kmeans$cluster, Data = subset(sample_no_kmeans, select = -cluster))
+
+# Dunn Index for sample_no_dbscan
+dbscan_dunn_index <- dunn(clusters = sample_no_dbscan$dbscan, Data = subset(sample_no_dbscan, select = -dbscan))
+
+# Dunn Index for sample_no_optics
+optics_dunn_index <- dunn(clusters = sample_no_optics$optics,Data = subset(sample_no_optics, select = -optics))
+
+# Dunn Index for yes_kmeans
+yes_kmeans_dunn_index <- dunn(clusters = kmeans_yes$cluster, Data = dataset_yes)
+
+# Dunn Index for yes_optics
+yes_optics_dunn_index <- dunn(clusters = optics_clusters$cluster, Data = dataset_yes)
+
+# Dunn Index for yes_dbscan
+yes_dbscan_dunn_index <- dunn(clusters = dbscan_yes$cluster, Data = dataset_yes)
+
+# Print the Dunn Indices
+kmeans_dunn_index
+dbscan_dunn_index
+optics_dunn_index
+yes_kmeans_dunn_index
+yes_optics_dunn_index
+yes_dbscan_dunn_index
