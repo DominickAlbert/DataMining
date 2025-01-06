@@ -142,7 +142,7 @@ dataset_no <- subset(dataset_no, select = -y)
 dataset_yes <- dataset_yes[!duplicated(dataset_yes),]
 dataset_no <- dataset_no[!duplicated(dataset_no),]
 
-# Should be 73945
+# Should be 8808 and 65420
 length(dataset_yes$age)
 length(dataset_no$age)
 
@@ -152,19 +152,21 @@ write.csv(dataset_no, file = "Combine_no.csv", row.names = FALSE)
 # -----------------------------Clustering and PCA--------------------------------
 
 # Reading the Combine CSV for better consistency
-dataset_yes = read.csv("Combine_yes.csv")
-dataset_no = read.csv("Combine_no.csv")
+dataset_yes <- read.csv("Combine_yes.csv")
+dataset_no <- read.csv("Combine_no.csv")
+
+modified_yes <- dataset_yes
+modified_no <- dataset_no
 
 # -----------------------------KMEANS--------------------------------
 
-# cluster yes no
-#* Clustering for "yes" data
+# Clustering for "yes" data
 kmeans_yes <- kmeans(dataset_yes, centers = 4, nstart = 25)
-dataset_yes$cluster <- kmeans_yes$cluster
+modified_yes$cluster <- kmeans_yes$cluster
 
 #* Clustering for "no" data
 kmeans_no <- kmeans(dataset_no, centers = 4, nstart = 25)
-dataset_no$cluster <- kmeans_no$cluster
+modified_no$cluster <- kmeans_no$cluster
 
 # -----------------------------Elbow method--------------------------------
 
@@ -208,7 +210,6 @@ datasetno_with_pca <- as.data.frame(datasetno_with_pca)
 
 # ----------------------------- DBSCAN CLUSTERING ----------------------------
 
-# Install the 'dbscan' package if you haven't already
 # install.packages("dbscan")
 
 # Load the DBSCAN library
@@ -216,13 +217,15 @@ library(dbscan)
 
 # DBSCAN Clustering for "Yes" Data
 dbscan_yes <- dbscan(dataset_yes, eps = 0.5, minPts = 5)
-datasetyes_with_pca$dbscan_cluster <- dbscan_yes$cluster
+
+modified_yes$dbscan <- dbscan_yes$cluster
+datasetyes_with_pca$dbscan <- dbscan_yes$cluster
 
 # DBSCAN Clustering for "No" Data
 dbscan_no <- dbscan(dataset_no, eps = 0.5, minPts = 5)
-datasetno_with_pca$dbscan_cluster <- dbscan_no$cluster
-dataset_no$dbscan <- dbscan_no$cluster
 
+modified_no$dbscan <- dbscan_no$cluster
+datasetno_with_pca$dbscan <- dbscan_no$cluster
 
 # ----------------------------- OPTICS CLUSTERING ----------------------------
 
@@ -232,7 +235,8 @@ optics_yes <- optics(dataset_yes, minPts = 5)
 optics_clusters <- extractDBSCAN(optics_yes, eps = 0.355)
 
 # Assign the cluster labels to the dataset
-datasetyes_with_pca$optics_cluster <- optics_clusters$cluster
+datasetyes_with_pca$optic <- optics_clusters$cluster
+modified_yes$optic <- optics_clusters$cluster
 
 # Apply OPTICS Clustering for "No" data (using "dbscan" package)
 optics_no <- optics(dataset_no, minPts = 5)
@@ -241,9 +245,8 @@ optics_no <- optics(dataset_no, minPts = 5)
 optics_clusters_no <- extractDBSCAN(optics_no, eps = 0.355)
 
 # Assign the cluster labels to the "No" data set
-datasetno_with_pca$optics_cluster <- optics_clusters_no$cluster
-dataset_no$optics <- optics_clusters_no$cluster
-
+datasetno_with_pca$optic <- optics_clusters_no$cluster
+modified_no$optic <- optics_clusters_no$cluster
 
 # ----------------------------- Visualization ----------------------------
 
@@ -277,7 +280,7 @@ p_no <- plot_ly(datasetno_with_pca, x = ~PC1, y = ~PC2, z = ~PC3, color = ~as.fa
 p_no
 
 # 3D plot for DBSCAN Clustering ("Yes" data)
-p_yes_dbscan <- plot_ly(datasetyes_with_pca, x = ~PC1, y = ~PC2, z = ~PC3, color = ~as.factor(dbscan_cluster), colors = "Set1") %>%
+p_yes_dbscan <- plot_ly(datasetyes_with_pca, x = ~PC1, y = ~PC2, z = ~PC3, color = ~as.factor(dbscan), colors = "Set1") %>%
   add_markers() %>%
   layout(scene = list(
     xaxis = list(title = 'PC1'),
@@ -290,7 +293,7 @@ p_yes_dbscan <- plot_ly(datasetyes_with_pca, x = ~PC1, y = ~PC2, z = ~PC3, color
 p_yes_dbscan
 
 # 3D plot for DBSCAN Clustering ("No" data)
-p_no_dbscan <- plot_ly(datasetno_with_pca, x = ~PC1, y = ~PC2, z = ~PC3, color = ~as.factor(dbscan_cluster), colors = "Set1") %>%
+p_no_dbscan <- plot_ly(datasetno_with_pca, x = ~PC1, y = ~PC2, z = ~PC3, color = ~as.factor(dbscan), colors = "Set1") %>%
   add_markers() %>%
   layout(scene = list(
     xaxis = list(title = 'PC1'),
@@ -307,7 +310,7 @@ p_no_optics <- plot_ly(datasetno_with_pca,
                        x = ~PC1, 
                        y = ~PC2, 
                        z = ~PC3, 
-                       color = ~as.factor(optics_cluster), 
+                       color = ~as.factor(optic), 
                        colors = "Set2",  # Choose a different color set
                        type = "scatter3d", 
                        mode = "markers") %>%
@@ -326,7 +329,7 @@ p_yes_optics <- plot_ly(datasetyes_with_pca,
                         x = ~PC1, 
                         y = ~PC2, 
                         z = ~PC3, 
-                        color = ~as.factor(optics_cluster), 
+                        color = ~as.factor(optic), 
                         colors = "Set1", 
                         type = "scatter3d", 
                         mode = "markers") %>%
@@ -346,28 +349,25 @@ p_yes_optics
 sample_fraction <- 0.2
 
 # Perform stratified sampling based on KMeans clusters
-sample_no_kmeans <- dataset_no %>%
+sample_no_kmeans <- modified_no %>%
   group_by(cluster) %>%
   sample_frac(sample_fraction)
 
-sample_no_kmeans <- sample_no_kmeans %>%
-  select(-optics,-dbscan)
+sample_no_kmeans <- subset(sample_no_kmeans, select = -c(optic, dbscan))
 
 # Perform stratified sampling based on DBSCAN clusters
-sample_no_dbscan <- dataset_no %>%
+sample_no_dbscan <- modified_no %>%
   group_by(dbscan) %>%
   sample_frac(sample_fraction)
 
-sample_no_dbscan <- sample_no_dbscan %>% 
-  select(-cluster,-optics)
+sample_no_dbscan <- subset(sample_no_dbscan, select = -c(optic, cluster))
 
 # Perform stratified sampling based on OPTICS clusters
-sample_no_optics <- dataset_no %>%
-  group_by(optics) %>%
+sample_no_optics <- modified_no %>%
+  group_by(optic) %>%
   sample_frac(sample_fraction)
 
-sample_no_optics <- sample_no_optics %>% 
-  select(-cluster,-dbscan)
+sample_no_optics <- subset(sample_no_optics, select = -c(cluster, dbscan))
 
 # ----------------------------- EVALUATION ----------------------------
 
@@ -384,7 +384,7 @@ kmeans_db_index <- index.DB(subset(sample_no_kmeans, select = -cluster),sample_n
 dbscan_db_index <- index.DB(subset(sample_no_dbscan, select = -dbscan),sample_no_dbscan$dbscan,centrotypes = "centroids")
 
 # Davies-Bouldin Index for sample_no_optics
-optics_db_index <- index.DB(subset(sample_no_optics, select = -optics),sample_no_optics$optics,centrotypes = "centroids")
+optics_db_index <- index.DB(subset(sample_no_optics, select = -optic),sample_no_optics$optic,centrotypes = "centroids")
 
 # Davies-Bouldin Index for yes_kmeans
 yes_kmeans_db_index <- index.DB(dataset_yes,kmeans_yes$cluster)
@@ -395,13 +395,7 @@ yes_optics_db_index <- index.DB(dataset_yes,optics_clusters$cluster)
 # Davies-Bouldin Index for yes_dbscan
 yes_dbscan_db_index <- index.DB(dataset_yes,dbscan_yes$cluster)
 
-# Print the Davies-Bouldin Indices
-kmeans_db_index$DB
-dbscan_db_index$DB
-optics_db_index$DB
-yes_kmeans_db_index$DB
-yes_optics_db_index$DB
-yes_dbscan_db_index$DB
+# ----------------------------- DUNN Evaluation ----------------------------
 
 # Dunn Index for sample_no_kmeans
 kmeans_dunn_index <- dunn(clusters = sample_no_kmeans$cluster, Data = subset(sample_no_kmeans, select = -cluster))
@@ -410,7 +404,7 @@ kmeans_dunn_index <- dunn(clusters = sample_no_kmeans$cluster, Data = subset(sam
 dbscan_dunn_index <- dunn(clusters = sample_no_dbscan$dbscan, Data = subset(sample_no_dbscan, select = -dbscan))
 
 # Dunn Index for sample_no_optics
-optics_dunn_index <- dunn(clusters = sample_no_optics$optics,Data = subset(sample_no_optics, select = -optics))
+optics_dunn_index <- dunn(clusters = sample_no_optics$optic,Data = subset(sample_no_optics, select = -optic))
 
 # Dunn Index for yes_kmeans
 yes_kmeans_dunn_index <- dunn(clusters = kmeans_yes$cluster, Data = dataset_yes)
@@ -421,6 +415,8 @@ yes_optics_dunn_index <- dunn(clusters = optics_clusters$cluster, Data = dataset
 # Dunn Index for yes_dbscan
 yes_dbscan_dunn_index <- dunn(clusters = dbscan_yes$cluster, Data = dataset_yes)
 
+# ----------------------------- Printing ----------------------------
+
 # Print the Dunn Indices
 kmeans_dunn_index
 dbscan_dunn_index
@@ -428,3 +424,11 @@ optics_dunn_index
 yes_kmeans_dunn_index
 yes_optics_dunn_index
 yes_dbscan_dunn_index
+
+# Print the Davies-Bouldin Indices
+kmeans_db_index$DB
+dbscan_db_index$DB
+optics_db_index$DB
+yes_kmeans_db_index$DB
+yes_optics_db_index$DB
+yes_dbscan_db_index$DB
