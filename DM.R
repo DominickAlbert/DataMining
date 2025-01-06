@@ -198,12 +198,54 @@ correlate_no <- cbind(dataset_no, pca_resultno$x)
 cor_matrix_no <- cor(correlate_no)
 corrplot(cor_matrix_no, method = "color", type = "upper", tl.col = "black", tl.srt = 45)
 
+# ----------------------------- PCA Part 2 --------------------------------
+
 # Combine only PC1, PC2, and PC3 with the cluster results for yes an no data 
 datasetyes_with_pca <- cbind(cluster = kmeans_yes$cluster, pca_resultyes$x[, 1:3])
 datasetyes_with_pca <- as.data.frame(datasetyes_with_pca)
 datasetno_with_pca <- cbind(cluster = kmeans_no$cluster, pca_resultno$x[, 1:3])
 datasetno_with_pca <- as.data.frame(datasetno_with_pca)
 
+# ----------------------------- DBSCAN CLUSTERING ----------------------------
+
+# Install the 'dbscan' package if you haven't already
+# install.packages("dbscan")
+
+# Load the DBSCAN library
+library(dbscan)
+
+# DBSCAN Clustering for "Yes" Data
+dbscan_yes <- dbscan(dataset_yes, eps = 0.5, minPts = 5)
+datasetyes_with_pca$dbscan_cluster <- dbscan_yes$cluster
+
+# DBSCAN Clustering for "No" Data
+dbscan_no <- dbscan(dataset_no, eps = 0.5, minPts = 5)
+datasetno_with_pca$dbscan_cluster <- dbscan_no$cluster
+dataset_no$dbscan <- dbscan_no$cluster
+
+
+# ----------------------------- OPTICS CLUSTERING ----------------------------
+
+optics_yes <- optics(dataset_yes, minPts = 5)
+
+# Extract clusters from OPTICS result using the reachability plot (set eps)
+optics_clusters <- extractDBSCAN(optics_yes, eps = 0.355)
+
+# Assign the cluster labels to the dataset
+datasetyes_with_pca$optics_cluster <- optics_clusters$cluster
+
+# Apply OPTICS Clustering for "No" data (using "dbscan" package)
+optics_no <- optics(dataset_no, minPts = 5)
+
+# Extract clusters from OPTICS result using the reachability plot (set eps)
+optics_clusters_no <- extractDBSCAN(optics_no, eps = 0.355)
+
+# Assign the cluster labels to the "No" data set
+datasetno_with_pca$optics_cluster <- optics_clusters_no$cluster
+dataset_no$optics <- optics_clusters_no$cluster
+
+
+# ----------------------------- Visualization ----------------------------
 
 #install.packages("plotly")
 # Load the plotly library
@@ -234,23 +276,6 @@ p_no <- plot_ly(datasetno_with_pca, x = ~PC1, y = ~PC2, z = ~PC3, color = ~as.fa
 
 p_no
 
-# ----------------------------- DBSCAN CLUSTERING ----------------------------
-
-# Install the 'dbscan' package if you haven't already
-# install.packages("dbscan")
-
-# Load the DBSCAN library
-library(dbscan)
-
-# DBSCAN Clustering for "Yes" Data
-dbscan_yes <- dbscan(dataset_yes, eps = 0.5, minPts = 5)
-datasetyes_with_pca$dbscan_cluster <- dbscan_yes$cluster
-
-# DBSCAN Clustering for "No" Data
-dbscan_no <- dbscan(dataset_no, eps = 0.5, minPts = 5)
-datasetno_with_pca$dbscan_cluster <- dbscan_no$cluster
-dataset_no$dbscan <- dbscan_no$cluster
-
 # 3D plot for DBSCAN Clustering ("Yes" data)
 p_yes_dbscan <- plot_ly(datasetyes_with_pca, x = ~PC1, y = ~PC2, z = ~PC3, color = ~as.factor(dbscan_cluster), colors = "Set1") %>%
   add_markers() %>%
@@ -277,23 +302,24 @@ p_no_dbscan <- plot_ly(datasetno_with_pca, x = ~PC1, y = ~PC2, z = ~PC3, color =
 # Show the plot for DBSCAN 'No' data
 p_no_dbscan
 
-# Save the results for DBSCAN clustering
-write.csv(dataset_yes, file = "Dataset_yes_with_DBSCAN.csv", row.names = FALSE)
-write.csv(dataset_no, file = "Dataset_no_with_DBSCAN.csv", row.names = FALSE)
+# 3D plot for OPTICS Clustering ("No" data)
+p_no_optics <- plot_ly(datasetno_with_pca, 
+                       x = ~PC1, 
+                       y = ~PC2, 
+                       z = ~PC3, 
+                       color = ~as.factor(optics_cluster), 
+                       colors = "Set2",  # Choose a different color set
+                       type = "scatter3d", 
+                       mode = "markers") %>%
+  layout(scene = list(
+    xaxis = list(title = 'PC1'),
+    yaxis = list(title = 'PC2'),
+    zaxis = list(title = 'PC3')
+  ),
+  title = "3D OPTICS Clustering Plot for 'No' Data")
 
-
-# ----------------------------- OPTICS CLUSTERING ----------------------------
-
-optics_yes <- optics(dataset_yes, minPts = 5)
-
-# Extract clusters from OPTICS result using the reachability plot (set eps)
-optics_clusters <- extractDBSCAN(optics_yes, eps = 0.355)
-
-# Assign the cluster labels to the dataset
-datasetyes_with_pca$optics_cluster <- optics_clusters$cluster
-
-# Check the first few rows of cluster labels
-head(datasetyes_with_pca$optics_cluster)
+# Show the plot for OPTICS Clustering 'No' data
+p_no_optics
 
 # 3D plot for OPTICS Clustering ("Yes" data)
 p_yes_optics <- plot_ly(datasetyes_with_pca, 
@@ -313,35 +339,6 @@ p_yes_optics <- plot_ly(datasetyes_with_pca,
 
 # Show the plot for OPTICS Clustering 'Yes' data
 p_yes_optics
-
-# Apply OPTICS Clustering for "No" data (using "dbscan" package)
-optics_no <- optics(dataset_no, minPts = 5)
-
-# Extract clusters from OPTICS result using the reachability plot (set eps)
-optics_clusters_no <- extractDBSCAN(optics_no, eps = 0.355)
-
-# Assign the cluster labels to the "No" data set
-datasetno_with_pca$optics_cluster <- optics_clusters_no$cluster
-dataset_no$optics <- optics_clusters_no$cluster
-
-# 3D plot for OPTICS Clustering ("No" data)
-p_no_optics <- plot_ly(datasetno_with_pca, 
-                       x = ~PC1, 
-                       y = ~PC2, 
-                       z = ~PC3, 
-                       color = ~as.factor(optics_cluster), 
-                       colors = "Set2",  # Choose a different color set
-                       type = "scatter3d", 
-                       mode = "markers") %>%
-  layout(scene = list(
-    xaxis = list(title = 'PC1'),
-    yaxis = list(title = 'PC2'),
-    zaxis = list(title = 'PC3')
-  ),
-  title = "3D OPTICS Clustering Plot for 'No' Data")
-
-# Show the plot for OPTICS Clustering 'No' data
-p_no_optics
 
 # ----------------------------- SAMPLING ----------------------------
 
